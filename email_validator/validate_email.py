@@ -102,8 +102,9 @@ def validate_email(
                                                 allow_empty_local=allow_empty_local,
                                                 quoted_local_part=is_quoted_local_part,
                                                 strict=strict)
-    ret.local_part = local_part_info["local_part"]
-    ret.ascii_local_part = local_part_info["ascii_local_part"]
+
+    # Report whether SMTPUTF8 is required for the address as given, prior to
+    # Unicode normalization next.
     ret.smtputf8 = local_part_info["smtputf8"]
 
     # RFC 6532 section 3.1 says that Unicode NFC normalization should be applied,
@@ -126,14 +127,16 @@ def validate_email(
     normalized_local_part = unicodedata.normalize("NFC", unescaped_local_part)
     if normalized_local_part != unescaped_local_part:
         try:
-            normalized_local_part_info = validate_email_local_part(normalized_local_part,
-                                                                   allow_smtputf8=allow_smtputf8,
-                                                                   allow_empty_local=allow_empty_local,
-                                                                   quoted_local_part=is_quoted_local_part,
-                                                                   strict=strict)
+            local_part_info = validate_email_local_part(normalized_local_part,
+                                                        allow_smtputf8=allow_smtputf8,
+                                                        allow_empty_local=allow_empty_local,
+                                                        quoted_local_part=is_quoted_local_part,
+                                                        strict=strict)
         except EmailSyntaxError as e:
             raise EmailSyntaxError("After Unicode normalization: " + str(e)) from e
-        ret.local_part = normalized_local_part_info["local_part"]
+
+    ret.local_part = local_part_info["local_part"]
+    ret.ascii_local_part = local_part_info["ascii_local_part"]
 
     # If a quoted local part isn't allowed but is present, now raise an exception.
     # This is done after any exceptions raised by validate_email_local_part so
